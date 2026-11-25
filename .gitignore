@@ -1,0 +1,21 @@
+
+# 本地运行时目录（截图、用户库、测试残留）
+.local-data/
+.tmp-*/
+frames/
+*.tgz
+
+# 依赖与构建产物（本包不分发 node_modules）
+node_modules/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+*.log
+
+# 装机后 local 生成的入库文件（真要被跟踪请手动 force add）
+generals-user.json
+slang-user.json
+harvest.json

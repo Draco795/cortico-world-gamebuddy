@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh">
+<meta charset="utf-8" />
+<title>面板预览</title>
+<body style="margin:0;padding:18px;background:#15171c;width:360px">
+<script type="module">
+  import mod from './dist/webui.js';
+
+  const state = { armed: true, collectGenerals: true, collectSlang: false };
+  const status =
+    '陪玩搭子（预览）\n' +
+    '开关：陪玩中（毒舌）\n' +
+    '读屏：最近一次读取 3.2 秒前\n' +
+    '直播采集：武将 5 条、黑话候选 2 条、最近弹幕 40 条\n' +
+    '库采集：武将库采集：开；黑话库采集：关\n' +
+    '库：32 武将 + 68 黑话';
+
+  const ctx = {
+    language: 'zh',
+    root: document.body,
+    invoke: async (method, args) => {
+      if (method === 'state') return { ...state };
+      if (method === 'status') return status;
+      if (method === 'auto') return { ...auto };
+      if (method === 'setAuto') {
+        auto.on = Boolean(args[0]);
+        return { on: auto.on, dryRun: auto.dryRun, steps: auto.steps, text: '' };
+      }
+      if (method === 'autoStep') {
+        auto.steps += 1;
+        return { ok: true, on: auto.on, step: { state: 'discard', reason: '弃牌阶段的确认按钮' }, text: '这一步：discard｜弃牌阶段的确认按钮\n想点「确定」(780, 1180)' };
+      }
+      if (method === 'setCollect') {
+        const key = args[0] === 'generals' ? 'collectGenerals' : 'collectSlang';
+        state[key] = Boolean(args[1]);
+        return { ...state };
+      }
+      if (method === 'off') {
+        state.armed = false;
+        return '';
+      }
+      if (method === 'on') {
+        state.armed = true;
+        return '';
+      }
+      return '（预览：这个按钮没接后端）';
+    },
+  };
+
+  mod.panels.main.mount(ctx);
+</script>
+</body>
+</html>

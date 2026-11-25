@@ -1,0 +1,72 @@
+{
+  "name": "cortico-world-gamebuddy",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Cortico World: a Sanguosha (三国杀) play-along companion — watches your match, roasts the board now and then, keeps a local general/skill book and a slang book the pet can query in a millisecond, and quietly learns new terms from live danmaku.",
+  "license": "AGPL-3.0-or-later",
+  "author": "Draco795 (https://github.com/Draco795)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Draco795/cortico-world-gamebuddy.git"
+  },
+  "homepage": "https://github.com/Draco795/cortico-world-gamebuddy#readme",
+  "bugs": {
+    "url": "https://github.com/Draco795/cortico-world-gamebuddy/issues"
+  },
+  "keywords": [
+    "cortico-world",
+    "cortico",
+    "game",
+    "sanguosha",
+    "companion",
+    "play-along",
+    "三国杀"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "os": [
+    "win32"
+  ],
+  "main": "./src/index.ts",
+  "cortico": {
+    "kind": "world",
+    "api": 6,
+    "displayName": "陪玩搭子-三国杀",
+    "icon": "src/icon.svg",
+    "describe": "describe.json",
+    "webUiClient": "dist/webui.js",
+    "tags": [
+      "game",
+      "streaming",
+      "internet",
+      "companion",
+      "external-setup",
+      "experimental",
+      "high-cost",
+      "sensitive-data",
+      "injection-risk"
+    ],
+    "locales": {
+      "en": {
+        "displayName": "Play-along Buddy · Sanguosha",
+        "description": "Watches your Sanguosha match, roasts the board, answers 'what should I play' with concrete rules, and keeps two editable local databases: general skills and slang."
+      }
+    },
+    "screenshots": [
+      "assets/shot-1.png",
+      "assets/shot-2.png"
+    ]
+  },
+  "files": [
+    "src",
+    "dist",
+    "data",
+    "assets",
+    "describe.json",
+    "ENV_PROMPT.md",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ]
+}
