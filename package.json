@@ -1,6 +1,6 @@
 {
   "name": "cortico-world-gamebuddy",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Cortico World: a Sanguosha (三国杀) play-along companion — watches your match, roasts the board now and then, keeps a local general/skill book and a slang book the pet can query in a millisecond, and quietly learns new terms from live danmaku.",
   "license": "AGPL-3.0-or-later",
