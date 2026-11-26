@@ -2,7 +2,7 @@
   "name": "cortico-world-gamebuddy",
   "version": "0.1.2",
   "type": "module",
-  "description": "Cortico World: a Sanguosha (三国杀) play-along companion — watches your match, roasts the board now and then, keeps a local general/skill book and a slang book the pet can query in a millisecond, and quietly learns new terms from live danmaku.",
+  "description": "Cortico World: a Sanguosha (三国杀) play-along companion — watches your match, roasts the board now and then, keeps a local general/skill book and a slang book the pet can query in a millisecond, and quietly learns new terms from live danmaku. 有问题也可以私信 @B站 青衫弈客。",
   "license": "AGPL-3.0-or-later",
   "author": "Draco795 (https://github.com/Draco795)",
   "repository": {
@@ -50,7 +50,7 @@
     "locales": {
       "en": {
         "displayName": "Play-along Buddy · Sanguosha",
-        "description": "Watches your Sanguosha match, roasts the board, answers 'what should I play' with concrete rules, and keeps two editable local databases: general skills and slang."
+        "description": "Watches your Sanguosha match, roasts the board, answers 'what should I play' with concrete rules, and keeps two editable local databases: general skills and slang. Questions? DM @青衫弈客 on Bilibili."
       }
     },
     "screenshots": [
