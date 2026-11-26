@@ -141,7 +141,23 @@ http://127.0.0.1:17790/
 - 条目可以直接用锚点分享：`#generals/姜维`、`#slang/乐`；
 - 内置条目删不掉（会提示），但可以**改成覆盖版**保存，效果等同改原文。
 
-只监听回环地址、没有鉴权——同机进程能访问，外网进不来。端口被占会自动往后挪，实际地址看 Coopanion 日志里的 `数据库编辑器：http://...`，或者宠物面板的「库」徽标。
+只监听回环地址、没有账号密码——但它**不是「同机谁都能写」**：写接口会校验请求来源。
+
+### 编辑页的写入校验（防跨站写入）
+
+浏览器里任意网页都能朝 `127.0.0.1:17790` 发请求，所以写接口按三道检查挡：
+
+| 检查 | 放行条件 | 不满足时 |
+|---|---|---|
+| `Origin` | 没带，或等于本页（`http://127.0.0.1:<端口>` / `http://localhost:<端口>`） | `403` |
+| `Sec-Fetch-Site` | 没带，或 `same-origin` / `none` | `403` |
+| `Content-Type`（有请求体时） | `application/json` | `415` |
+
+思路：跨站表单只能发 `text/plain` 这类「简单请求」，碰不到第二道；而一旦把 `Content-Type` 改成 `application/json`，浏览器就会先发预检、而本服务不返回任何 CORS 头，预检失败、请求根本发不出来。命令行用 `curl` 写库不受影响（加 `-H 'content-type: application/json'` 即可）。
+
+页面还带 `X-Frame-Options: DENY` 与 `frame-ancestors 'none'`，不能被别的网页套进 iframe 里骗你点。
+
+回归测试：`node test-editor-guard.mjs`（13 条：三类拒绝 + 两种放行）。
 
 面板里的入口：`invoke('editor')` 返回 `{url, generals, slang}`，`invoke('openEditor')` 用默认浏览器直接打开。
 

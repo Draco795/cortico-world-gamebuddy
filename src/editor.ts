@@ -62,10 +62,81 @@ function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
+/** 请求体不合法（非法 JSON、跨站、Content-Type 不对）时抛这个，由顶层 catch 回对应状态码。 */
+class BadRequest extends Error {
+  readonly status: number;
+
+  constructor(message: string, status = 400) {
+    super(message);
+    this.status = status;
+  }
+}
+
+/**
+ * 写接口的跨站防线（三道一起上，任何一道独立生效）：
+ * ① `Sec-Fetch-Site` 只能是同源或 none——现代浏览器一定带这个头，跨站页面触发不了 same-origin；
+ * ② 有 `Origin` 就必须是本页（127.0.0.1 / localhost + 同一端口）；
+ * ③ 带请求体就要求 `application/json`——跨站带这个头会先发预检，浏览器会拦下，而 text/plain 的
+ *    跨站简单请求碰不到 ③。
+ * 为什么不全靠 Origin：老浏览器/命令行客户端可能不带；为什么不全靠 Content-Type：GET/无体请求没有它。
+ */
+function isSameOrigin(req: IncomingMessage, origin: string): boolean {
+  const hostHeader = String(req.headers.host ?? '');
+  if (!hostHeader) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(origin);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+  if (parsed.hostname !== '127.0.0.1' && parsed.hostname !== 'localhost' && parsed.hostname !== '::1') {
+    return false;
+  }
+  const originPort = parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
+  const hostPort = hostHeader.includes(':') ? (hostHeader.split(':').pop() ?? '') : '80';
+  return originPort === hostPort;
+}
+
+function guardWrite(req: IncomingMessage): void {
+  const site = String(req.headers['sec-fetch-site'] ?? '').toLowerCase();
+  if (site && site !== 'same-origin' && site !== 'none') {
+    throw new BadRequest(`拒绝跨站写入（Sec-Fetch-Site: ${site}）`, 403);
+  }
+
+  const origin = req.headers.origin;
+  if (origin && !isSameOrigin(req, origin)) {
+    throw new BadRequest(`拒绝跨站写入（Origin 不是本页：${origin}）`, 403);
+  }
+
+  const hasBody =
+    req.headers['content-length'] !== undefined || req.headers['transfer-encoding'] !== undefined;
+  if (hasBody) {
+    const contentType = String(req.headers['content-type'] ?? '').toLowerCase();
+    if (!contentType.startsWith('application/json')) {
+      throw new BadRequest('写接口只接受 application/json（跨站表单发不出这个头）', 415);
+    }
+  }
+}
+
+async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
+  const raw = await readBody(req);
+  if (!raw.trim()) return {};
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new BadRequest(`请求体不是合法 JSON：${error instanceof Error ? error.message : String(error)}`);
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new BadRequest('请求体要是一个 JSON 对象');
+  }
+  return parsed as Record<string, unknown>;
+}
+
 function asString(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
-
 function parseSkills(value: unknown): GeneralSkill[] {
   if (!Array.isArray(value)) return [];
   const out: GeneralSkill[] = [];
@@ -132,11 +203,17 @@ async function handle(req: IncomingMessage, res: ServerResponse, opts: EditorOpt
   const path = url.pathname;
 
   try {
+    // 写接口先过跨站防线：本页 Origin + JSON Content-Type，别让任意网页能往库里塞东西
+    if (method !== 'GET' && method !== 'HEAD') guardWrite(req);
+
     if (method === 'GET' && (path === '/' || path === '/index.html')) {
       const html = PAGE;
       res.writeHead(200, {
         'content-type': 'text/html; charset=utf-8',
         'cache-control': 'no-store',
+        // 别让别的页面把编辑页塞进 iframe 里点（点击劫持）
+        'x-frame-options': 'DENY',
+        'content-security-policy': "frame-ancestors 'none'",
         'content-length': Buffer.byteLength(html),
       });
       res.end(html);
@@ -161,7 +238,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, opts: EditorOpt
         return;
       }
       if (method === 'POST') {
-        const body = JSON.parse(await readBody(req)) as Record<string, unknown>;
+        const body = await readJson(req);
         const name = asString(body.name);
         if (!name) {
           json(res, 400, { ok: false, error: '武将名不能为空' });
@@ -209,7 +286,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, opts: EditorOpt
         return;
       }
       if (method === 'POST') {
-        const body = JSON.parse(await readBody(req)) as Record<string, unknown>;
+        const body = await readJson(req);
         const term = asString(body.term);
         const meaning = asString(body.meaning);
         if (!term || !meaning) {
@@ -273,7 +350,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, opts: EditorOpt
         json(res, 400, { ok: false, error: '直播采集没开' });
         return;
       }
-      const body = JSON.parse(await readBody(req)) as Record<string, unknown>;
+      const body = await readJson(req);
       const term = asString(body.term);
       if (!term) {
         json(res, 400, { ok: false, error: '缺少 term' });
@@ -294,7 +371,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, opts: EditorOpt
         json(res, 400, { ok: false, error: '直播采集没开' });
         return;
       }
-      const body = JSON.parse(await readBody(req)) as Record<string, unknown>;
+      const body = await readJson(req);
       const term = asString(body.term);
       if (!term) {
         json(res, 400, { ok: false, error: '缺少 term' });
@@ -307,7 +384,7 @@ async function handle(req: IncomingMessage, res: ServerResponse, opts: EditorOpt
     }
 
     if (path === '/api/harvest/learn' && method === 'POST') {
-      const body = JSON.parse(await readBody(req)) as Record<string, unknown>;
+      const body = await readJson(req);
       const name = asString(body.name);
       if (!name) {
         json(res, 400, { ok: false, error: '缺少 name' });
@@ -330,9 +407,17 @@ async function handle(req: IncomingMessage, res: ServerResponse, opts: EditorOpt
       return;
     }
 
-    json(res, 404, { ok: false, error: `没有这个接口：${method} ${path}` });  } catch (error) {
-    opts.log.warn(`编辑器请求失败 ${method} ${path}：${error instanceof Error ? error.message : String(error)}`);
-    json(res, 500, { ok: false, error: error instanceof Error ? error.message : String(error) });
+    json(res, 404, { ok: false, error: `没有这个接口：${method} ${path}` });
+  } catch (error) {
+    // 交叉校验失败（跨站 / Content-Type 不对 / JSON 坏）走 4xx，其余才是 500
+    const status = error instanceof BadRequest ? error.status : 500;
+    const message = error instanceof Error ? error.message : String(error);
+    if (status >= 500) {
+      opts.log.warn(`编辑器请求失败 ${method} ${path}：${message}`);
+    } else {
+      opts.log.info(`编辑器拒绝请求 ${method} ${path}（${status}）：${message}`);
+    }
+    json(res, status, { ok: false, error: message });
   }
 }
 

@@ -1,5 +1,19 @@
 # 更新日志
 
+## 0.1.2
+
+安全修复。感谢 Cortico 扩展市场（Pal-AI-Lab/cortico-extensions）维护者在审查 0.1.1 源码时指出的问题：
+数据库编辑页的写接口没有校验请求来源，本机浏览器里任意网页都能往武将库/黑话库里塞条目
+（浏览器发 `text/plain` 的跨站 POST 不触发预检），而这些条目会经环境提示词进到宠物上下文。
+
+- 写接口现在校验请求来源（`src/editor.ts`）：
+  - `Origin` 必须是本页（`http://127.0.0.1:<端口>` / `http://localhost:<端口>`），跨站直接 `403`；
+  - 带请求体时必须 `Content-Type: application/json`，`text/plain` 之类回 `415`——跨站带这个头会先预检，浏览器会拦下；
+  - 再叠一层 `Sec-Fetch-Site`（只认 `same-origin` / `none`）。
+- 编辑页响应加 `X-Frame-Options: DENY` 与 `frame-ancestors 'none'`，防止被 iframe 套住点击劫持。
+- 请求体不是合法 JSON 时回 `400`（原来会落到 `500` 并写一条 warn 日志）。
+- 新增 `test-editor-guard.mjs`：13 条用例覆盖「跨站 Origin / 跨站 Sec-Fetch-Site / 非 JSON」三类拒绝，以及「本页 Origin + JSON」「无 Origin + JSON（curl）」两种放行。
+
 ## 0.1.1
 
 - 与 0.1.0 内容相同，仅重新发布一次（发布流程校验；0.1.0 的元数据本身正常）。
